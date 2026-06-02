@@ -8,7 +8,8 @@ from .prompt import SYSTEM_PROMPT
 #LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
 #使用智谱AI的接口
 # ZHIPU_AI_URL = "https://api.zhipuai.com/v1/chat
-client = ZhipuAiClient(api_key="129fd50324cd4bcb8ccafabb97101511.sDcg488wpcoU0xHv")
+api_key = ""
+client = ZhipuAiClient(api_key=api_key)
 def call_llm(question: str, temperature: float = 0.3) -> str:
     payload = {
         "model": "glm-4.7-flash",
