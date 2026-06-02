@@ -1,0 +1,430 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 化学提分老师</title>
+    <!-- KaTeX (LaTeX 公式渲染) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <!-- Marked (Markdown 解析) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #dbeafe;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary), #1e40af);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-logo { font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+        .header-sub { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+        .header-btn {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .header-btn:hover { background: rgba(255,255,255,0.25); }
+        .usage-badge {
+            background: rgba(255,255,255,0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            flex: 1;
+        }
+        .input-section {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .input-section h2 { font-size: 18px; margin-bottom: 4px; }
+        .input-section p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s;
+            line-height: 1.6;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        .input-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-outline:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+            font-size: 14px;
+            margin-top: 12px;
+        }
+        .loading.show { display: flex; }
+        .spinner {
+            width: 20px; height: 20px;
+            border: 3px solid var(--primary-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .result-section {
+            display: none;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .result-section.show { display: block; }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+        .result-header h3 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+
+        /* === 渲染输出样式 === */
+        .result-body {
+            padding: 24px;
+            line-height: 2;
+            font-size: 15px;
+            color: var(--text);
+        }
+        .result-body h2 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding: 8px 14px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .result-body h2:first-child { margin-top: 0; }
+        .result-body p { margin: 8px 0; }
+        .result-body ul { margin: 8px 0 12px 0; padding-left: 24px; }
+        .result-body li { margin: 5px 0; }
+        .result-body strong { color: var(--primary-dark); font-weight: 700; }
+        .result-body .katex { font-size: 1.1em; }
+        .result-body .katex-display { margin: 10px 0; overflow-x: auto; overflow-y: hidden; }
+
+        .result-actions {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .error-msg {
+            background: #fef2f2;
+            color: var(--danger);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            border: 1px solid #fecaca;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--text);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            pointer-events: none;
+            z-index: 999;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+
+        @media (max-width: 600px) {
+            .header { flex-direction: column; gap: 8px; }
+            .header-actions { width: 100%; justify-content: center; }
+            .container { padding: 16px 12px; }
+            .input-section { padding: 16px; }
+            .result-body { padding: 16px; }
+            .input-actions { flex-direction: column; }
+            .input-actions .btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div>
+                <div class="header-logo">🧪 AI 化学提分老师</div>
+                <div class="header-sub">今天帮你多考 10 分</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <span class="usage-badge" id="usageBadge">📌 今日已用：0</span>
+            <a href="/wrong.html" class="header-btn">📚 错题本</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="input-section">
+            <h2>📝 输入化学题目</h2>
+            <p>支持 LaTeX 公式，如 Cl₂ + NaOH → ?</p>
+            <textarea id="questionInput" placeholder="例如：Cl₂ 和 NaOH 反应是什么？&#10;或者：如何判断氧化还原反应中电子转移的方向？"></textarea>
+            <div class="input-actions">
+                <button class="btn btn-primary" id="explainBtn" onclick="ask()">🎯 开始讲解</button>
+                <button class="btn btn-outline" onclick="clearInput()">🗑️ 清空</button>
+            </div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <span>AI 正在思考中，请稍候...</span>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-header">
+                <h3>📖 AI 讲解结果</h3>
+                <span id="questionTitle" style="font-size:13px;color:var(--text-muted);max-width:50%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+            </div>
+            <div class="result-body" id="resultBody"></div>
+            <div class="result-actions">
+                <button class="btn btn-success" onclick="saveToWrong()">⭐ 加入错题本</button>
+                <button class="btn btn-outline" onclick="reAsk()">🔄 重新讲解</button>
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:12px;font-size:13px;color:var(--text-muted);">
+            <span>💡 AI 讲解采用「题目定位 → 考点拆解 → 解题步骤 → 高分关键点 → 记忆模板」五段式结构</span>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentQuestion = '';
+        let currentAnswer = '';
+        let usageCount = parseInt(localStorage.getItem('usageCount') || '0');
+        updateUsage();
+
+        document.getElementById('questionInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) ask();
+        });
+
+        function updateUsage() {
+            document.getElementById('usageBadge').textContent = `📌 今日已用：${usageCount}`;
+        }
+
+        async function ask() {
+            const q = document.getElementById('questionInput').value.trim();
+            if (!q) { showError('请输入化学题目'); return; }
+
+            hideError();
+            currentQuestion = q;
+            document.getElementById('questionTitle').textContent = q;
+
+            const btn = document.getElementById('explainBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 讲解中...';
+            document.getElementById('loadingIndicator').classList.add('show');
+            document.getElementById('resultSection').classList.remove('show');
+
+            try {
+                const res = await fetch('/api/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: q })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '请求失败');
+
+                currentAnswer = data.answer;
+                displayResult(data.answer);
+                usageCount++;
+                localStorage.setItem('usageCount', usageCount.toString());
+                updateUsage();
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎯 开始讲解';
+                document.getElementById('loadingIndicator').classList.remove('show');
+            }
+        }
+
+        function displayResult(answer) {
+            const body = document.getElementById('resultBody');
+
+            // Preprocess: section headers
+            let formatted = answer
+                .replace(/\n/g, '\n\n')    // ensure paragraph breaks
+                .replace(/①\s*题目定位/g, '## 📌 ① 题目定位')
+                .replace(/②\s*考点拆解/g, '## 🎯 ② 考点拆解')
+                .replace(/③\s*标准解题步骤/g, '## 📝 ③ 标准解题步骤')
+                .replace(/④\s*高分关键点/g, '## ⚠️ ④ 高分关键点')
+                .replace(/⑤\s*记忆模板/g, '## 💡 ⑤ 记忆模板')
+                .replace(/Step (\d+)[：:]/g, '**Step $1：**')
+                .trim();
+
+            // Parse Markdown to HTML
+            try {
+                formatted = marked.parse(formatted);
+            } catch (e) {
+                // fallback
+                formatted = formatted
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .split('\n').filter(l => l.trim()).map(l => '<p>' + l + '</p>').join('');
+            }
+
+            body.innerHTML = formatted;
+
+            // Render LaTeX math with KaTeX
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(body, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+
+            document.getElementById('resultSection').classList.add('show');
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function saveToWrong() {
+            if (!currentQuestion) return;
+            const btn = document.querySelector('.btn-success');
+            btn.disabled = true;
+            btn.textContent = '⏳ 保存中...';
+            try {
+                const res = await fetch('/api/wrong/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: currentQuestion, tags: '' })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '保存失败');
+                showToast('✅ 已加入错题本！', 'success');
+            } catch (err) {
+                showToast('❌ 保存失败：' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⭐ 加入错题本';
+            }
+        }
+
+        function reAsk() {
+            document.getElementById('resultSection').classList.remove('show');
+            document.getElementById('questionInput').value = currentQuestion;
+            document.getElementById('questionInput').focus();
+        }
+
+        function clearInput() {
+            document.getElementById('questionInput').value = '';
+            document.getElementById('resultSection').classList.remove('show');
+            hideError();
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+        function hideError() { document.getElementById('errorMsg').classList.remove('show'); }
+
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + type;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>

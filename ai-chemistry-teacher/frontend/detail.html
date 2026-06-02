@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错题详情 - AI 化学提分老师</title>
+    <!-- KaTeX + Marked (same as index.html) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --primary-light: #dbeafe;
+            --accent: #f59e0b; --success: #10b981; --danger: #ef4444;
+            --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --text-muted: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .header {
+            background: linear-gradient(135deg, var(--primary), #1e40af); color: white;
+            padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-logo { font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+        .header-actions { display: flex; gap: 8px; }
+        .header-btn {
+            background: rgba(255,255,255,0.15); color: white;
+            border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 8px;
+            cursor: pointer; font-size: 14px; text-decoration: none; transition: background 0.2s;
+        }
+        .header-btn:hover { background: rgba(255,255,255,0.25); }
+        .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+        .loading { text-align: center; padding: 60px; color: var(--text-muted); }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 16px; overflow: hidden; }
+        .card-header { padding: 18px 24px; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 600; }
+        .card-body { padding: 24px; line-height: 1.8; font-size: 15px; }
+        .question-text {
+            background: #f8fafc; padding: 16px 20px; border-radius: 10px;
+            border-left: 4px solid var(--primary); font-size: 16px; line-height: 1.7;
+        }
+        /* Rendered answer styles (same as index) */
+        .answer-text { padding: 0; line-height: 2; font-size: 15px; color: var(--text); }
+        .answer-text h2 {
+            font-size: 17px; font-weight: 700; margin-top: 20px; margin-bottom: 10px;
+            padding: 8px 14px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid var(--primary);
+        }
+        .answer-text h2:first-child { margin-top: 0; }
+        .answer-text p { margin: 8px 0; }
+        .answer-text ul { margin: 8px 0 12px 0; padding-left: 24px; }
+        .answer-text li { margin: 5px 0; }
+        .answer-text strong { color: var(--primary-dark); font-weight: 700; }
+        .answer-text .katex { font-size: 1.1em; }
+        .answer-text .katex-display { margin: 10px 0; overflow-x: auto; overflow-y: hidden; }
+
+        .meta-info { display: flex; gap: 16px; flex-wrap: wrap; padding: 16px 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+        .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tag { display: inline-block; background: var(--primary-light); color: var(--primary); padding: 2px 10px; border-radius: 6px; font-size: 12px; }
+        .action-bar { display: flex; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border); }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; background: var(--text); color: white;
+            padding: 12px 20px; border-radius: 10px; font-size: 14px;
+            opacity: 0; transform: translateY(20px); transition: all 0.3s; pointer-events: none; z-index: 999;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        @media (max-width: 600px) {
+            .header { flex-direction: column; gap: 8px; }
+            .header-actions { width: 100%; justify-content: center; }
+            .container { padding: 16px 12px; } .card-header, .card-body, .action-bar, .meta-info { padding: 14px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left"><div class="header-logo">📄 错题详情</div></div>
+        <div class="header-actions">
+            <a href="/wrong.html" class="header-btn">📚 返回错题本</a>
+            <a href="/" class="header-btn">🧪 去解题</a>
+        </div>
+    </header>
+    <div class="container">
+        <div id="detailContent"><div class="loading">加载中...</div></div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script>
+        const questionId = new URLSearchParams(window.location.search).get('id');
+        async function loadDetail() {
+            if (!questionId) {
+                document.getElementById('detailContent').innerHTML = `<div class="card" style="text-align:center;padding:40px;"><p style="color:var(--text-muted);">❌ 未指定错题 ID</p><a href="/wrong.html" class="btn btn-primary" style="margin-top:16px;display:inline-block;">返回错题本</a></div>`;
+                return;
+            }
+            try {
+                const res = await fetch(`/api/wrong/${questionId}`);
+                if (!res.ok) { if (res.status === 404) throw new Error('错题不存在'); throw new Error('请求失败'); }
+                const data = await res.json();
+                renderDetail(data);
+            } catch (err) {
+                document.getElementById('detailContent').innerHTML = `<div class="card" style="text-align:center;padding:40px;"><p style="color:var(--text-muted);">❌ ${err.message}</p><a href="/wrong.html" class="btn btn-primary" style="margin-top:16px;display:inline-block;">返回错题本</a></div>`;
+            }
+        }
+
+        function renderDetail(data) {
+            const date = data.created_at ? new Date(data.created_at + 'Z').toLocaleString('zh-CN') : '未知日期';
+            const tags = data.tags ? data.tags.split(/[,，\/]/).filter(t => t.trim()).map(t => `<span class="tag">${t.trim()}</span>`).join('') : '';
+
+            // Render answer as Markdown + LaTeX
+            let formattedAnswer = data.answer
+                .replace(/\n/g, '\n\n')
+                .replace(/①\s*题目定位/g, '## 📌 ① 题目定位')
+                .replace(/②\s*考点拆解/g, '## 🎯 ② 考点拆解')
+                .replace(/③\s*标准解题步骤/g, '## 📝 ③ 标准解题步骤')
+                .replace(/④\s*高分关键点/g, '## ⚠️ ④ 高分关键点')
+                .replace(/⑤\s*记忆模板/g, '## 💡 ⑤ 记忆模板')
+                .replace(/Step (\d+)[：:]/g, '**Step $1：**')
+                .trim();
+
+            let answerHtml;
+            try { answerHtml = marked.parse(formattedAnswer); }
+            catch (e) { answerHtml = escapeHtml(data.answer).split('\n').filter(l => l.trim()).map(l => '<p>' + l + '</p>').join(''); }
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="card">
+                    <div class="card-header"><h3>📝 题目</h3></div>
+                    <div class="card-body"><div class="question-text">${escapeHtml(data.question)}</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>📖 AI 讲解</h3></div>
+                    <div class="card-body"><div class="answer-text" id="answerContainer">${answerHtml}</div></div>
+                </div>
+                <div class="card">
+                    <div class="meta-info">
+                        <span>📅 收录时间：${date}</span>
+                        ${tags ? `<span class="tags">🏷️ ${tags}</span>` : ''}
+                    </div>
+                    <div class="action-bar">
+                        <button class="btn btn-primary" onclick="practiceAgain()">🔄 重新练习</button>
+                        <button class="btn btn-danger" onclick="deleteQuestion()">🗑️ 删除此题</button>
+                    </div>
+                </div>
+            `;
+
+            // Render LaTeX after DOM is updated
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.getElementById('answerContainer'), {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+
+            window._currentQuestion = data.question;
+        }
+
+        function practiceAgain() { window.location.href = `/?q=${encodeURIComponent(window._currentQuestion || '')}`; }
+
+        async function deleteQuestion() {
+            if (!confirm('确定删除这道错题吗？')) return;
+            try {
+                const res = await fetch(`/api/wrong/${questionId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('删除失败');
+                showToast('✅ 已删除', 'success');
+                setTimeout(() => window.location.href = '/wrong.html', 800);
+            } catch (err) { showToast('❌ 删除失败：' + err.message, 'error'); }
+        }
+
+        function escapeHtml(text) { if (!text) return ''; const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg; toast.className = 'toast ' + type;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        loadDetail();
+    </script>
+</body>
+</html>
