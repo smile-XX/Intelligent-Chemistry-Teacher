@@ -4,11 +4,12 @@ LLM 服务模块 - 调用 LM Studio OpenAI API 兼容接口
 import requests
 from zai import ZhipuAiClient
 from .prompt import SYSTEM_PROMPT
+import os
 #本地大模型用于测试
 #LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
 #使用智谱AI的接口
 # ZHIPU_AI_URL = "https://api.zhipuai.com/v1/chat
-api_key = ""
+api_key = os.environ.get("API_KEY", "")
 client = ZhipuAiClient(api_key=api_key)
 def call_llm(question: str, temperature: float = 0.3) -> str:
     payload = {
